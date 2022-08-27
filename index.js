@@ -5,7 +5,7 @@ import { fetchBuilder, MemoryCache } from 'node-fetch-cache';
 const fetch = fetchBuilder.withCache(new MemoryCache({ttl: 60000}));
 
 const app = express()
-const port = 3000
+const port = process.env.PORT || 3000
 
 app.get('/', (req, res) => {
     res.send('Usage: \n<br/> /works/:id \n<br/> /works/:id/download/:type')
