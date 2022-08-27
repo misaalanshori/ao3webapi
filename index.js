@@ -1,8 +1,7 @@
 import express from 'express'
 import cors from 'cors'
 import { parse } from 'node-html-parser'
-import { fetchBuilder, MemoryCache } from 'node-fetch-cache';
-const fetch = fetchBuilder.withCache(new MemoryCache({ttl: 60000}));
+import fetch from 'node-fetch'
 
 const app = express()
 const port = process.env.PORT || 3000
@@ -11,6 +10,21 @@ app.use(cors())
 app.get('/', (req, res) => {
     res.send('Usage: \n<br/> /works/:id \n<br/> /works/:id/download/:type')
 })
+
+function getDownloadLinks(id) {
+    fetch(`https://archiveofourown.org/works/${req.params.id}?view_adult=true`).then(async resp => {
+        if (resp.status != 200) {
+            return null
+        } else {
+            let html = parse(await resp.text())
+            let links = {}
+            html.querySelectorAll("li.download > ul.expandable.secondary > li").forEach(e => {
+                links[e.textContent.toLowerCase()] = e.childNodes[0].attributes.href
+            })
+            return links
+        }
+    })
+}
 
 // Get Work Information
 app.get("/works/:id",  (req, res) => {
@@ -58,21 +72,19 @@ app.get("/works/:id",  (req, res) => {
 })
 
 app.get("/works/:id/download/:type", (req, res) => {
-    let itype = req.params.type.toLowerCase()
     fetch(`https://archiveofourown.org/works/${req.params.id}?view_adult=true`).then(async resp => {
         if (resp.status != 200) {
             res.sendStatus("404")
         } else {
             let html = parse(await resp.text())
-            let links = {}
-            html.querySelectorAll("li.download > ul.expandable.secondary > li").forEach(e => {
-                links[e.textContent.toLowerCase()] = e.childNodes[0].attributes.href
-            })
-            if (Object.keys(links).includes(itype)) {
-                fetch("https://download.archiveofourown.org" + links[itype]).then(resp => {
-                    res.set("Content-Disposition", `attachment; filename="${links[itype].split("/").pop().split("?")[0]}"`)
-                    resp.body.pipe(res)
-                })
+            let link = html.querySelectorAll("li.download > ul.expandable.secondary > li")
+            .find(e => e.textContent.toLowerCase() == req.params.type.toLowerCase())
+            if (link) {
+                    let href = link.childNodes[0].attributes.href
+                    fetch("https://download.archiveofourown.org" + href).then(resp => {
+                        res.set("Content-Disposition", `attachment; filename="${href.split("/").pop().split("?")[0]}"`)
+                        resp.body.pipe(res)
+                    })
             } else {
                 res.sendStatus("404")
             }
