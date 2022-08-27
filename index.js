@@ -80,12 +80,6 @@ app.get("/works/:id/download/:type", (req, res) => {
     })
 })
 
-app.get("/test", (req, res) => {
-    fetch("http://mirror.private.adminispwd.com/servermcbedrock.zip").then(resp => {
-        resp.body.pipe(res)
-    })
-})
-
 app.use(cors())
 
 app.listen(port, () => {
