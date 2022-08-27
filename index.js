@@ -38,6 +38,14 @@ app.get("/works/:id",  (req, res) => {
                         stats[v.textContent.trim().slice(0, -1)] = statscontent[i].textContent.trim()
                     })
                     metadata[metaKey] = stats
+                } else if (metaKey == "Series") {
+                    metadata[metaKey] = {
+                        name: infocontent[index].querySelector("span.position > a").textContent.trim(),
+                        href: infocontent[index].querySelector("span.position > a").attributes.href,
+                        prev: infocontent[index].querySelector("a.previous") ? infocontent[index].querySelector("a.previous").attributes.href : "",
+                        next: infocontent[index].querySelector("a.next") ? infocontent[index].querySelector("a.next").attributes.href : "",
+                        pos: infocontent[index].querySelector("span.position").text.match(/\d+/)[0]
+                    }
                 } else {
                     metadata[metaKey] = infocontent[index].querySelectorAll("li").map(e => {return {"text": e.textContent, "href": e.childNodes[0].attributes.href}})
                 }
