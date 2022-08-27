@@ -6,6 +6,7 @@ const fetch = fetchBuilder.withCache(new MemoryCache({ttl: 60000}));
 
 const app = express()
 const port = process.env.PORT || 3000
+app.use(cors())
 
 app.get('/', (req, res) => {
     res.send('Usage: \n<br/> /works/:id \n<br/> /works/:id/download/:type')
@@ -80,7 +81,7 @@ app.get("/works/:id/download/:type", (req, res) => {
     })
 })
 
-app.use(cors())
+
 
 app.listen(port, () => {
     console.log(`The app listening on port ${port}`)
