@@ -8,6 +8,13 @@ const ao3downurl = "https://download.archiveofourown.org/"
 
 const app = express()
 const port = process.env.PORT || 3000
+
+const fetchOpt = {
+    headers: {
+        cookie: 'view_adult=true'
+    }
+};
+
 app.use(cors())
 
 app.get('/', (req, res) => {
@@ -38,8 +45,9 @@ function getDownloadLinks(id) {
 function parseWorkItem(element) {
     let values = {
         id: element.attributes.id.split("_")[1],
-        name: element.querySelector("h4.heading > a").textContent.trim(),
+        title: element.querySelector("h4.heading > a").textContent.trim(),
         href: element.querySelector("h4.heading > a").attributes.href,
+        author: element.querySelectorAll('h4.heading > a[rel~="author"]').map(e => {return {text: e.textContent.trim(), href: e.attributes.href}}),
         symbols: element.querySelectorAll("a.help.symbol.question > span").map(e => e.classNames),
         tags: {}
     }
@@ -73,51 +81,56 @@ function parseWorkItem(element) {
 app.get("/works/:id",  (req, res) => {
     // - :id -> ID of the work
     // Returns a JSON with all the information of the work
-    fetch(`${ao3url}works/${req.params.id}?view_adult=true`).then(async resp => {
+    fetch(`${ao3url}works/${req.params.id}?view_adult=true`, fetchOpt).then(async resp => {
         if (resp.status != 200) {
             res.sendStatus(404)
         } else {
-            let html = parse(await resp.text())
-            let metadata = {}
-            metadata["title"] = html.querySelector("h2.title.heading").textContent.trim()
-            metadata["author"] = html.querySelectorAll("h3.byline.heading > a").map(e => {return {"text": e.textContent, "href": e.attributes.href}})
-            let summary = html.querySelector("div.summary.module > blockquote.userstuff")
-            if (summary) {
-                metadata["summary"] = summary.structuredText.trim()
-            }
-            metadata["tags"] = {}
-            html.querySelectorAll("dl.work.meta.group > dd.tags").forEach(e => {
-                metadata["tags"][e.classNames.split(" ")[0]] = e.querySelectorAll("ul > li > a").map(e => {return {text: e.textContent.trim(), href: e.attributes.href}})
-            })
-            html.querySelectorAll("dl.work.meta.group > dd:not(.tags)").forEach(val => {
-                let metaKey = val.classNames.split(" ")[0]
-                if (metaKey == "language") {
-                    metadata[metaKey] = val.textContent.trim()
-                } else if (metaKey == "collections") {
-                    metadata[metaKey] = val.querySelectorAll("a").map(e => {return {"text": e.textContent, "href": e.attributes.href}})
-                } else if (metaKey == "stats") {
-                    let statscontent = val.querySelectorAll("dl.stats > dd")
-                    let stats = {}
-                    statscontent.forEach((v, i) => {
-                        stats[v.classNames] = statscontent[i].textContent.trim()
-                    })
-                    metadata[metaKey] = stats
-                } else if (metaKey == "series") {
-                    metadata[metaKey] = {
-                        name: val.querySelector("span.position > a").textContent.trim(),
-                        href: val.querySelector("span.position > a").attributes.href,
-                        prev: val.querySelector("a.previous") ? val.querySelector("a.previous").attributes.href : "",
-                        next: val.querySelector("a.next") ? val.querySelector("a.next").attributes.href : "",
-                        pos: val.querySelector("span.position").text.match(/\d+/)[0]
-                    }
-                } else {
-                    metadata[metaKey] = val.childNodes.map(e => e.textContent.trim())
+            resp.text().then(htxt => {
+                let html = parse(htxt)
+                let metadata = {}
+                metadata["id"] = req.params.id
+                metadata["title"] = html.querySelector("h2.title.heading").textContent.trim()
+                metadata["author"] = html.querySelectorAll("h3.byline.heading > a").map(e => {return {"text": e.textContent, "href": e.attributes.href}})
+                let summary = html.querySelector("div.summary.module > blockquote.userstuff")
+                if (summary) {
+                    metadata["summary"] = summary.structuredText.trim()
                 }
-            })
-            res.json(metadata)
-        }
+                metadata["tags"] = {}
+                html.querySelectorAll("dl.work.meta.group > dd.tags").forEach(e => {
+                    metadata["tags"][e.classNames.split(" ")[0]] = e.querySelectorAll("ul > li > a").map(e => {return {text: e.textContent.trim(), href: e.attributes.href}})
+                })
+                html.querySelectorAll("dl.work.meta.group > dd:not(.tags)").forEach(val => {
+                    let metaKey = val.classNames.split(" ")[0]
+                    if (metaKey == "language") {
+                        metadata[metaKey] = val.textContent.trim()
+                    } else if (metaKey == "collections") {
+                        metadata[metaKey] = val.querySelectorAll("a").map(e => {return {"text": e.textContent, "href": e.attributes.href}})
+                    } else if (metaKey == "stats") {
+                        let statscontent = val.querySelectorAll("dl.stats > dd")
+                        let stats = {}
+                        statscontent.forEach((v, i) => {
+                            stats[v.classNames] = statscontent[i].textContent.trim()
+                        })
+                        metadata[metaKey] = stats
+                    } else if (metaKey == "series") {
+                        metadata[metaKey] = {
+                            name: val.querySelector("span.position > a").textContent.trim(),
+                            href: val.querySelector("span.position > a").attributes.href,
+                            prev: val.querySelector("a.previous") ? val.querySelector("a.previous").attributes.href : "",
+                            next: val.querySelector("a.next") ? val.querySelector("a.next").attributes.href : "",
+                            pos: val.querySelector("span.position").text.match(/\d+/)[0]
+                        }
+                    } else {
+                        metadata[metaKey] = val.childNodes.map(e => e.textContent.trim())
+                    }
+                })
+                res.json(metadata)
+            
         
-    })
+            })
+            
+            
+    }})
 })
 
 // Download Document Files for a Work
