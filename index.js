@@ -27,7 +27,7 @@ Usage: </br>
 
 // Get download links for document files
 function getDownloadLinks(id) {
-    fetch(`${ao3url}works/${req.params.id}?view_adult=true`).then(async resp => {
+    fetch(`${ao3url}works/${req.params.id}?view_adult=true`, fetchOpt).then(async resp => {
         if (resp.status != 200) {
             return null
         } else {
@@ -138,7 +138,7 @@ app.get("/works/:id/download/:type", (req, res) => {
     // - :id -> ID of the work
     // - :type -> Filetype for the document (AZW3, EPUB, MOBI, PDF, HTML)
     // Returns a document file for the requested work
-    fetch(`${ao3url}works/${req.params.id}?view_adult=true`).then(async resp => {
+    fetch(`${ao3url}works/${req.params.id}?view_adult=true`, fetchOpt).then(async resp => {
         if (resp.status != 200) {
             res.sendStatus(404)
         } else {
