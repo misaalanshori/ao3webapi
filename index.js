@@ -49,6 +49,7 @@ function parseWorkItem(element) {
         href: element.querySelector("h4.heading > a").attributes.href,
         author: element.querySelectorAll('h4.heading > a[rel~="author"]').map(e => {return {text: e.textContent.trim(), href: e.attributes.href}}),
         symbols: element.querySelectorAll("a.help.symbol.question > span").map(e => e.classNames),
+        stats: {},
         tags: {}
     }
     element.querySelectorAll("ul.tags.commas > li").forEach(e => {
@@ -62,18 +63,22 @@ function parseWorkItem(element) {
             href: content.attributes.href
         })
     })
-    let series = element.querySelector("ul.series")
-    if (series) {
-        values["series"] = {
-            name: series.querySelector("li > a").textContent.trim(),
-            href: series.querySelector("li > a").attributes.href,
-            part: series.querySelector("li > strong").textContent.trim(),
-        }
+    let series = element.querySelectorAll("ul.series > li")
+    if (series[0]) {
+        values["series"] = series.map(v => {return {
+            name: v.querySelector("a").textContent.trim(),
+            href: v.querySelector("a").attributes.href,
+            part: v.querySelector("strong").textContent.trim(),
+        }})
+
     }
     let summary = element.querySelector("blockquote.userstuff.summary")
     if (summary) {
         values["summary"] = summary.structuredText.trim()
     }
+
+    element.querySelectorAll("dl.stats > dd").forEach(e => values["stats"][e.classNames] = e.textContent.trim())
+
     return values
 }
 
@@ -113,13 +118,14 @@ app.get("/works/:id",  (req, res) => {
                         })
                         metadata[metaKey] = stats
                     } else if (metaKey == "series") {
-                        metadata[metaKey] = {
-                            name: val.querySelector("span.position > a").textContent.trim(),
-                            href: val.querySelector("span.position > a").attributes.href,
-                            prev: val.querySelector("a.previous") ? val.querySelector("a.previous").attributes.href : "",
-                            next: val.querySelector("a.next") ? val.querySelector("a.next").attributes.href : "",
-                            pos: val.querySelector("span.position").text.match(/\d+/)[0]
-                        }
+                        metadata[metaKey] = val.querySelectorAll("span.series").map(v => {return {
+                            name: v.querySelector("span.position > a").textContent.trim(),
+                            href: v.querySelector("span.position > a").attributes.href,
+                            prev: v.querySelector("a.previous") ? val.querySelector("a.previous").attributes.href : "",
+                            next: v.querySelector("a.next") ? val.querySelector("a.next").attributes.href : "",
+                            part: v.querySelector("span.position").text.match(/\d+/)[0]
+                        }})
+                        
                     } else {
                         metadata[metaKey] = val.childNodes.map(e => e.textContent.trim())
                     }
